@@ -42,6 +42,7 @@ defmodule Apic.MixProject do
   defp deps do
     [
       {:siblings, "~> 0.11"},
+      {:telemetria, "~> 0.13"},
       {:estructura, "~> 0.5"},
       {:jason, "~> 1.0"},
       # dev / test

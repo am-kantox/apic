@@ -47,9 +47,10 @@ defmodule Apic.MixProject do
       {:jason, "~> 1.0"},
       # dev / test
       {:stream_data, "~> 0.5", only: [:dev, :test, :ci]},
+      {:mox, git: "https://github.com/dashbitco/mox", only: [:dev, :test, :ci]},
       {:credo, "~> 1.0", only: [:dev, :ci]},
       {:dialyxir, "~> 1.0", only: [:dev, :ci], runtime: false},
-      {:ex_doc, "~> 0.11", only: :dev}
+      {:ex_doc, "~> 0.11", only: [:dev]}
     ]
   end
 

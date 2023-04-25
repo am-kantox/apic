@@ -3,11 +3,13 @@ defmodule Apic.Request do
   virgin --> |init!| initialized
   initialized --> |request!| response
   initialized --> |request!| auth
+  initialized --> |request!| retry
   initialized --> |request!| error
-  response --> |ok| processed
-  error --> |init!| initialized
   auth --> |login!| initialized
   auth --> |login!| error
+  retry --> |retry!| initialized
+  retry --> |retry!| error
+  response --> |ok!| processed
   error --> |ko!| processed
   """
 
@@ -24,8 +26,11 @@ defmodule Apic.Request do
       path: {StreamData, :constant, ["/api"]},
       query: {StreamData, :constant, [""]}
     },
+    internals: %{
+      retries: {StreamData, :constant, [0]},
+      subscribers: {StreamData, :constant, [[]]}
+    },
     token: {StreamData, :constant, ["some_token"]},
-    subscribers: {StreamData, :constant, [[]]},
     request: {StreamData, :constant, ["{}"]},
     response: {StreamData, :constant, ["{}"]}
   }
@@ -42,12 +47,17 @@ defmodule Apic.Request do
 
   @impl Finitomata
   def on_start(%{pid: from, request: request}) do
-    state = struct!(void(), subscribers: [from], request: request)
+    state =
+      void()
+      |> put_in([:request], request)
+      |> put_in([:internals, :subscribers], [from])
+
     {:continue, state}
   end
 
   @impl Finitomata
   def on_transition(:initialized, :request!, _event_payload, %{} = payload) do
+    # [FIXME] DO ACTUAL REQUEST
     {:ok, :response, payload}
   end
 
@@ -68,5 +78,21 @@ defmodule Apic.Request do
       interval: 200,
       throttler: [:initialized, :auth]
     )
+  end
+
+  @spec synch_request(map() | String.t(), timeout()) :: {:ok, any()} | {:error, :timeout | any()}
+  def synch_request(request, timeout \\ 5_000) when is_binary(request) or is_map(request) do
+    async_request(request, self())
+
+    receive do
+      {:response, response} ->
+        {:ok, {:response, response}}
+
+      {:error, error} ->
+        {:error, error}
+    after
+      timeout ->
+        {:error, :timeout}
+    end
   end
 end
